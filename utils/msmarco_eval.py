@@ -1,4 +1,6 @@
 """
+This is official eval script opensourced on MSMarco site (not written or owned by us)
+
 This module computes evaluation metrics for MSMARCO dataset on the ranking task.
 Command line:
 python msmarco_eval_ranking.py <path_to_reference_file> <path_to_candidate_file>
