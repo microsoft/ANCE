@@ -179,7 +179,7 @@ Our model achieves the following performance on MSMARCO dev set and TREC eval se
 | ANCE(MaxP)   |      0.671       |      0.628    |
 
 |   MSMARCO Dev Passage Retrieval    | MRR@10  | 
-|---------------- | -------------- |-------------- |
+|---------------- | -------------- |
 | pretrained BM25 warmup checkpoint   |     0.311       | 
 
 
