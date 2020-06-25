@@ -203,6 +203,5 @@ The t-SNE plots for all the queries in the TREC document eval set for ANCE(First
 run_train.sh and run_ann_data_gen.sh files contain the commands with the parameters we used for passage ANCE(FirstP), document ANCE(FirstP) and document 2048 ANCE(MaxP) to reproduce the results in this section.
 run_train_warmup.sh contains the commands to reproduce the results for the pretrained BM25 warmup checkpoint in this section
 
-*the full release on github will be provided at a later time
 
 
