@@ -1,4 +1,27 @@
 # Approximate Nearest Neighbor Negative Contrastive Learning for Dense Text Retrieval
+Lee Xiong*, Chenyan Xiong*, Ye Li, Kwok-Fung Tang, Jialin Liu, Paul Bennett, Junaid Ahmed, Arnold Overwijk
+
+This repo provides the code for reproducing the experiments in [Approximate Nearest Neighbor Negative Contrastive Learning for Dense Text Retrieval](https://arxiv.org/pdf/2007.00808.pdf) 
+
+Conducting text retrieval in a dense learned representation space has many intriguing advantages over sparse retrieval. Yet the effectiveness of dense retrieval (DR)
+often requires combination with sparse retrieval. In this paper, we identify that
+the main bottleneck is in the training mechanisms, where the negative instances
+used in training are not representative of the irrelevant documents in testing. This
+paper presents Approximate nearest neighbor Negative Contrastive Estimation
+(ANCE), a training mechanism that constructs negatives from an Approximate
+Nearest Neighbor (ANN) index of the corpus, which is parallelly updated with the
+learning process to select more realistic negative training instances. This fundamentally resolves the discrepancy between the data distribution used in the training
+and testing of DR. In our experiments, ANCE boosts the BERT-Siamese DR
+model to outperform all competitive dense and sparse retrieval baselines. It nearly
+matches the accuracy of sparse-retrieval-and-BERT-reranking using dot-product in
+the ANCE-learned representation space and provides almost 100x speed-up.
+
+Our analyses further confirm that the negatives from sparse retrieval or other sampling methods differ
+drastically from the actual negatives in DR, and that ANCE fundamentally resolves this mismatch.
+We also show the influence of the asynchronous ANN refreshing on learning convergence and
+demonstrate that the efficiency bottleneck is in the encoding update, not in the ANN part during
+ANCE training. These qualifications demonstrate the advantages, perhaps also the necessity, of our
+asynchronous ANCE learning in dense retrieval.
 
 ## Requirements
 
@@ -11,47 +34,7 @@ pip install faiss-cpu --no-cache
 ```
 
 ## Data Download
-Relevant datasets for passage and documents are listed in the tables below with download links.
-
-### Document ranking dataset
-
-| Type   | Filename                                                                                                              | File size |              Num Records | Format                                                         |
-|--------|-----------------------------------------------------------------------------------------------------------------------|----------:|-------------------------:|----------------------------------------------------------------|
-| Corpus | [msmarco-docs.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-docs.tsv.gz)                          |     22 GB |               3,213,835  | tsv: docid, url, title, body                                   |
-| Corpus | [msmarco-docs.trec](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-docs.trec.gz)                        |     22 GB |               3,213,835  | TREC DOC format (same content as msmarco-docs.tsv)                                               |
-| Corpus | [msmarco-docs-lookup.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-docs-lookup.tsv.gz)            |    101 MB |               3,213,835  | tsv: docid, offset_trec, offset_tsv                            |
-| Train  | [msmarco-doctrain-queries.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-doctrain-queries.tsv.gz)  |     15 MB |                 367,013  | tsv: qid, query                                                |
-| Train  | [msmarco-doctrain-top100](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-doctrain-top100.gz)            |    1.8 GB |              36,701,116  | TREC submission: qid, "Q0", docid, rank, score, runstring      |
-| Train  | [msmarco-doctrain-qrels.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-doctrain-qrels.tsv.gz)      |    7.6 MB |                 384,597  | TREC qrels format                                              |
-| Train  | [msmarco-doctriples.py](https://github.com/microsoft/TREC-2019-Deep-Learning/blob/master/utils/msmarco-doctriples.py) |         - |                       -  | Python script generates training triples |
-| Dev    | [msmarco-docdev-queries.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-docdev-queries.tsv.gz)      |    216 KB |                   5,193  | tsv: qid, query                                                |
-| Dev    | [msmarco-docdev-top100](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-docdev-top100.gz)        |       27 MB |                     519,300  | TREC submission: qid, "Q0", docid, rank, score, runstring      |
-| Dev    | [msmarco-docdev-qrels.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-docdev-qrels.tsv.gz)          |    112 KB |                   5,478  | TREC qrels format                                              |
-| Test    | [msmarco-test2019-queries.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-test2019-queries.tsv.gz)          |     12K |                   200  | tsv: qid, query                                              |
-| Test    | [msmarco-doctest2019-top100](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-doctest2019-top100.gz)          |   1.1M |                  20,000  | TREC submission: qid, "Q0", docid, rank, score, runstring       |
-| Test    | [2019qrels-docs](https://trec.nist.gov/data/deep/2019qrels-docs.txt)          |   331K |                  16,258  | qid, "Q0", docid, rating       |
-
-### Passage ranking dataset
-
-| Description                                           | Filename                                                                                                                | File size |                        Num Records | Format                                                         |
-|-------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|----------:|-----------------------------------:|----------------------------------------------------------------|
-| Collection                                | [collection.tar.gz](https://msmarco.blob.core.windows.net/msmarcoranking/collection.tar.gz)                             |    2.9 GB |                         8,841,823  | tsv: pid, passage |
-| Queries                                   | [queries.tar.gz](https://msmarco.blob.core.windows.net/msmarcoranking/queries.tar.gz)                                   |   42.0 MB |                         1,010,916  | tsv: qid, query |
-| Qrels Dev                                 | [qrels.dev.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/qrels.dev.tsv)                                     |    1.1 MB |                            59,273  | TREC qrels format |
-| Qrels Train                               | [qrels.train.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/qrels.train.tsv)                                 |   10.1 MB |                           532,761  | TREC qrels format |
-| Queries, Passages, and Relevance   Labels | [collectionandqueries.tar.gz](https://msmarco.blob.core.windows.net/msmarcoranking/collectionandqueries.tar.gz)         |    2.9 GB |                        10,406,754  | |
-| Train Triples Small                       | [triples.train.small.tar.gz](https://msmarco.blob.core.windows.net/msmarcoranking/triples.train.small.tar.gz)           |   27.1 GB |                        39,780,811  | tsv: query, positive passage, negative passage |
-| Train Triples Large                      | [triples.train.full.tsv.gz](https://msmarco.blob.core.windows.net/msmarcoranking/triples.train.full.tsv.gz)             |  272.2 GB |                       397,756,691  | tsv: query, positive passage, negative passage |
-| Train Triples QID PID Format               | [qidpidtriples.train.full.2.tsv.gz](https://msmarco.blob.core.windows.net/msmarcoranking/qidpidtriples.train.full.2.tsv.gz) |    5.7 GB |                       397,768,673  | tsv: qid, positive pid, negative pid |
-| Top 1000 Train                            | [top1000.train.tar.gz](https://msmarco.blob.core.windows.net/msmarcoranking/top1000.train.tar.gz)                       |  175.0 GB |                       478,002,393  | tsv: qid, pid, query, passage |
-| Top 1000 Dev                              | [top1000.dev.tar.gz](https://msmarco.blob.core.windows.net/msmarcoranking/top1000.dev.tar.gz)                           |    2.5 GB |                         6,668,967  | tsv: qid, pid, query, passage |
-| Test    | [msmarco-test2019-queries.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-test2019-queries.tsv.gz)          |     12K |                   200  | tsv: qid, query                                              |
-| Test    | [msmarco-passagetest2019-top1000.tsv](https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-passagetest2019-top1000.tsv.gz)          |     71M |                  189,877  | tsv: qid, pid, query, passage                                              |
-| Test    | [2019qrels-pass.txt](https://trec.nist.gov/data/deep/2019qrels-pass.txt)          |     182K |                  9,260  | qid, "Q0", docid, rating   
-
-For passage, we used the official small dev set on MSMarco. The corresponding files in one zipped file can be downloaded [here](https://msmarco.blob.core.windows.net/msmarcoranking/collectionandqueries.tar.gz). 
-
-For detailed information on the datasets, refer to [TREC-2019-Deep-Learning](https://github.com/microsoft/TREC-2019-Deep-Learning) for document datasets and [MS MARCO dataset](https://github.com/microsoft/MSMARCO-Passage-Ranking) for passage datasets.
+Datasets used for document ranking can be downloaded [here](https://github.com/microsoft/TREC-2019-Deep-Learning). Datasets used for passage ranking can be downloaded [here](https://github.com/microsoft/MSMARCO-Passage-Ranking). 
 
 ## Data Preprocessing
 The command to preprocess passage and document data is listed below:
@@ -184,25 +167,25 @@ Our model achieves the following performance on MSMARCO dev set and TREC eval se
 
 
 
-The pretrained BM25 warmup checkpoint used to train our ANCE models could be downloaded [here](https://drive.google.com/open?id=1m5YI_11wV354CR3sGmJl69eV1sdJkXva)
+The pretrained BM25 warmup checkpoint used to train our ANCE models could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/warmup_checpoint.zip)
 
 You can download our best trained models here:
-[Passage ANCE(FirstP)](https://drive.google.com/open?id=11n4TaqIxFN44h-AqRYEuU8JcSVbSkAQ2)
-[Document ANCE(FirstP)](https://drive.google.com/open?id=17FNKsP54JwXRRpAtfU0oWGOkrocNSMez)
-[Document 2048 ANCE(MaxP)](https://drive.google.com/open?id=1hINs2-LPI5NUc16VO_1mYYl3U7dWYRIo)
+[Passage ANCE(FirstP)](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Passage_ANCE_FirstP_Checkpoint.zip).
+[Document ANCE(FirstP)](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_FirstP_Checkpoint.zip).
+[Document 2048 ANCE(MaxP)](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_MaxP_Checkpoint.zip).
 
-Our result for document ANCE(FirstP) TREC eval set top 100 retrieved document per query could be downloaded [here](https://drive.google.com/open?id=12ww9BAe6jjtwJG7-baqsJTbwXGjNxzUy)
-Our result for document ANCE(MaxP) TREC eval set top 100 retrieved document per query could be downloaded [here](https://drive.google.com/open?id=170uwM-rcBpc268QGfP0zwlUwLXfOe9de)
+Our result for document ANCE(FirstP) TREC eval set top 100 retrieved document per query could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Results/ance_512_eval_top100.txt).
+Our result for document ANCE(MaxP) TREC eval set top 100 retrieved document per query could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Results/ance_2048_eval_top100.txt).
 
-The TREC eval set query embedding and their ids for our passage ANCE(FirstP) experiment could be downloaded [here](https://drive.google.com/open?id=1al6JrtpZPSFL8JEEeFtWPHcSur522-ty) 
-The TREC eval set query embedding and their ids for our document ANCE(FirstP) experiment could be downloaded [here](https://drive.google.com/open?id=1lgJek1of0T1X_5IJgqmgvN7VBnNDq0JL) 
-The TREC eval set query embedding and their ids for our document 2048 ANCE(MaxP) experiment could be downloaded [here](https://drive.google.com/open?id=1Q3ltIJ0psGTafESnTE27Jxpq0X7anS-X)
+The TREC eval set query embedding and their ids for our passage ANCE(FirstP) experiment could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Passage_ANCE_FirstP_Embedding.zip).
+The TREC eval set query embedding and their ids for our document ANCE(FirstP) experiment could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_FirstP_Embedding.zip).
+The TREC eval set query embedding and their ids for our document 2048 ANCE(MaxP) experiment could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_MaxP_Embedding.zip).
 
-The t-SNE plots for all the queries in the TREC document eval set for ANCE(FirstP) could be viewed [here](https://drive.google.com/drive/folders/1-3kpPyTWC15sEZVv9uvBmDpEOkanrx8W)
+The t-SNE plots for all the queries in the TREC document eval set for ANCE(FirstP) could be viewed [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/t-SNE.zip).
 
 run_train.sh and run_ann_data_gen.sh files contain the commands with the parameters we used for passage ANCE(FirstP), document ANCE(FirstP) and document 2048 ANCE(MaxP) to reproduce the results in this section.
 run_train_warmup.sh contains the commands to reproduce the results for the pretrained BM25 warmup checkpoint in this section
 
 Note the steps to reproduce similar results as shown in the table might be a little different due to different synchronizing between training and ann data generation processes and other possible environment differences of the user experiments.
 
-
+∗Lee and Chenyan contributed equally
