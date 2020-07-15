@@ -13,7 +13,7 @@
 # seq_length=512
 # model_type=rdot_nll
 # tokenizer_type="roberta-base"
-# base_data_dir="raw data path"
+# base_data_dir="../data/raw_data/"
 # preprocessed_data_dir="${base_data_dir}ann_data_${tokenizer_type}_${seq_length}/"
 # job_name="OSPass512"
 
@@ -23,7 +23,7 @@
 # seq_length=512
 # model_type=rdot_nll
 # tokenizer_type="roberta-base"
-# base_data_dir="raw data path"
+# base_data_dir="../data/raw_data/"
 # preprocessed_data_dir="${base_data_dir}ann_data_${tokenizer_type}_${seq_length}/"
 # job_name="OSDoc512"
 
@@ -32,7 +32,7 @@ gpu_no=4
 seq_length=2048
 model_type=rdot_nll_multi_chunk
 tokenizer_type="roberta-base"
-base_data_dir="raw data path"
+base_data_dir="../data/raw_data/"
 preprocessed_data_dir="${base_data_dir}ann_data_${tokenizer_type}_${seq_length}/"
 job_name="OSDoc2048"
 

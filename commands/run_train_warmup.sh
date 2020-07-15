@@ -1,5 +1,5 @@
 # This script is for training the warmup checkpoint for ANCE
-data_dir="raw data path"
+data_dir="../data/raw_data/"
 output_dir=""
 cmd="python3 -m torch.distributed.launch --nproc_per_node=1 ../drivers/run_warmup.py --train_model_type rdot_nll \
   --model_name_or_path roberta-base \

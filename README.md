@@ -28,13 +28,16 @@ asynchronous ANCE learning in dense retrieval.
 To install requirements, run the following commands:
 
 ```setup
-pip install transformers==2.3.0
-pip install pytrec-eval
-pip install faiss-cpu --no-cache
+git clone https://github.com/microsoft/ANCE
+cd ANCE
+python setup.py install
 ```
 
 ## Data Download
-Datasets used for document ranking can be downloaded [here](https://github.com/microsoft/TREC-2019-Deep-Learning). Datasets used for passage ranking can be downloaded [here](https://github.com/microsoft/MSMARCO-Passage-Ranking). 
+To download all the needed data, run:
+```
+bash commands/datadownload.sh 
+```
 
 ## Data Preprocessing
 The command to preprocess passage and document data is listed below:
@@ -50,6 +53,33 @@ python data/msmarco_data.py 
 ```
 
 The data preprocessing command is included as the first step in the training command file commands/run_train.sh
+
+## Warmup for Training
+ANCE training starts from a pretrained BM25 warmup checkpoint. The command with our used parameters to train this warmup checkpoint is in commands/run_train_warmup.py and is shown below:
+
+        python3 -m torch.distributed.launch --nproc_per_node=1 ../drivers/run_warmup.py \
+        --train_model_type rdot_nll \
+        --model_name_or_path roberta-base \
+        --task_name MSMarco \
+        --do_train \
+        --evaluate_during_training \
+        --data_dir ${location of your raw data}  
+        --max_seq_length 128 
+        --per_gpu_eval_batch_size=256 \
+        --per_gpu_train_batch_size=32 \
+        --learning_rate 2e-4  \
+        --logging_steps 100   \
+        --num_train_epochs 2.0  \
+        --output_dir ${location for checkpoint saving} \
+        --warmup_steps 1000  \
+        --overwrite_output_dir \
+        --save_steps 30000 \
+        --gradient_accumulation_steps 1 \
+        --expected_train_size 35000000 \
+        --logging_steps_per_eval 1 \
+        --fp16 \
+        --optimizer lamb \
+        --log_dir ~/tensorboard/${DLWS_JOB_ID}/logs/OSpass
 
 ## Training
 
@@ -99,34 +129,6 @@ To train the model(s) in the paper, you need to start two commands in the follow
 
     The command is similar to the initial ANN data generation command explained previously
 
-## Warmup for Training
-ANCE training starts from a pretrained BM25 warmup checkpoint. The command with our used parameters to train this warmup checkpoint is in commands/run_train_warmup.py and is shown below:
-
-        python3 -m torch.distributed.launch --nproc_per_node=1 ../drivers/run_warmup.py \
-        --train_model_type rdot_nll \
-        --model_name_or_path roberta-base \
-        --task_name MSMarco \
-        --do_train \
-        --evaluate_during_training \
-        --data_dir ${location of your raw data}  
-        --max_seq_length 128 
-        --per_gpu_eval_batch_size=256 \
-        --per_gpu_train_batch_size=32 \
-        --learning_rate 2e-4  \
-        --logging_steps 100   \
-        --num_train_epochs 2.0  \
-        --output_dir ${location for checkpoint saving} \
-        --warmup_steps 1000  \
-        --overwrite_output_dir \
-        --save_steps 30000 \
-        --gradient_accumulation_steps 1 \
-        --expected_train_size 35000000 \
-        --logging_steps_per_eval 1 \
-        --fp16 \
-        --optimizer lamb \
-        --log_dir ~/tensorboard/${DLWS_JOB_ID}/logs/OSpass
-
-
 ## Inference
 The command for inferencing query and passage/doc embeddings is the same as that for Initial ANN data generation described above as the first step in ANN data generation is inference. However you need to add --inference to the command to have the program to stop after the initial inference step. commands/run_inference.sh provides a sample command.
 
@@ -141,44 +143,76 @@ The evaluation is done through "Calculate Metrics.ipynb". This notebook calculat
         raw_data_dir = 
         processed_data_dir = 
 
+## ANCE VS DPR on OpenQA Benchmarks
+We also evaluate ANCE on the OpenQA benchmark used in a parallel work ([DPR](https://github.com/facebookresearch/DPR)). At the time of our experiment, only the pre-processed NQ and TriviaQA data are released. 
+Our experiments use the two released tasks and inherit DPR retriever evaluation. The evaluation uses the Coverage@20/100 which is whether the Top-20/100 retrieved passages include the answer. We explain the steps to 
+reproduce our results on OpenQA Benchmarks in this section.
+
+### Download data
+commands/data_download.sh takes care of this step.
+
+### Preprocess data
+The commands to preprocess data downloaded from the previous step are provided in:
+```
+commands/run_tokenization_dpr.sh
+```
+
+### ANN data generation & ANCE training
+Following the same training philosophy discussed before, the ann data generation and ANCE training for OpenQA require two parallel jobs.
+1. We need to generate an initial training set for ANCE to start training. The command for that is provided in:
+```
+commands/run_ann_data_gen_dpr.sh
+```
+We keep this data generation job running after it creates an initial training set as it will later keep generating training data with newest checkpoints from the training process.
+
+2. After an initial training set is generated, we start an ANCE training job with commands provided in:
+```
+commands/run_train_dpr.sh
+```
+During training, the evaluation metrics will be printed to tensorboards each time it receives new training data.
+
 ## Results
-The run_train.sh and run_ann_data_gen.sh files contain the commands with the parameters we used for passage ANCE(FirstP), document ANCE(FirstP) and document ANCE(MaxP)
+The run_train.sh and run_ann_data_gen.sh files contain the command with the parameters we used for passage ANCE(FirstP), document ANCE(FirstP) and document ANCE(MaxP)
 Our model achieves the following performance on MSMARCO dev set and TREC eval set :
 
 
 |   MSMARCO Dev Passage Retrieval    | MRR@10  | Recall@1k | Steps |
 |---------------- | -------------- |-------------- | -------------- |
-| ANCE(FirstP)   |     0.330         |      0.959       |      600K       |
+| ANCE(FirstP)   |     0.330         |      0.959       |      [600K](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Passage_ANCE_FirstP_Checkpoint.zip)       |
 | ANCE(MaxP)   |     -         |      -       |      -       |
 
 |   TREC DL Passage NDCG@10    | Rerank  | Retrieval | Steps |
 |---------------- | -------------- |-------------- | -------------- |
-| ANCE(FirstP)   |     0.677   |     0.648       |      600K      |
+| ANCE(FirstP)   |     0.677   |     0.648       |      [600K](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Passage_ANCE_FirstP_Checkpoint.zip)      |
 | ANCE(MaxP)   |      -         |     -     |      -       |
 
 |   TREC DL Document NDCG@10    | Rerank  | Retrieval | Steps |
 |---------------- | -------------- |-------------- | -------------- |
-| ANCE(FirstP)   |     0.641       |      0.615       |      210K       |
-| ANCE(MaxP)   |      0.671       |      0.628    |      139K       |
+| ANCE(FirstP)   |     0.641       |      0.615       |      [210K](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_FirstP_Checkpoint.zip)       |
+| ANCE(MaxP)   |      0.671       |      0.628    |      [139K](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_MaxP_Checkpoint.zip)       |
 
 |   MSMARCO Dev Passage Retrieval    | MRR@10  |  Steps |
 |---------------- | -------------- | -------------- |
-| pretrained BM25 warmup checkpoint   |     0.311       |       60K       |
+| pretrained BM25 warmup checkpoint   |     0.311       |       [60K](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/warmup_checpoint.zip)       |
+
+| ANCE Single-task Training      | Top-20  |  Top-100 | Steps |
+|---------------- | -------------- | -------------- |-------------- |
+| NQ    |     81.9       |        87.5     |      [136K](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/nq.cp)       |
+| TriviaQA    |    80.3         |       85.3       |      [100K](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/trivia.cp)       |
+
+| ANCE Multi-task Training      | Top-20  |  Top-100 | Steps |
+|---------------- | -------------- | -------------- |-------------- |
+| NQ    |     82.1       |         87.9     |      [300K](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/multi.cp)       |
+| TriviaQA    |    80.3        |       85.2       |      [300K](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/multi.cp)       |
 
 
-
-The pretrained BM25 warmup checkpoint used to train our ANCE models could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/warmup_checpoint.zip)
-
-You can download our best trained models here:
-[Passage ANCE(FirstP)](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Passage_ANCE_FirstP_Checkpoint.zip).
-[Document ANCE(FirstP)](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_FirstP_Checkpoint.zip).
-[Document 2048 ANCE(MaxP)](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_MaxP_Checkpoint.zip).
+Click the steps in the table to download the corresponding checkpoints.
 
 Our result for document ANCE(FirstP) TREC eval set top 100 retrieved document per query could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Results/ance_512_eval_top100.txt).
 Our result for document ANCE(MaxP) TREC eval set top 100 retrieved document per query could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Results/ance_2048_eval_top100.txt).
 
 The TREC eval set query embedding and their ids for our passage ANCE(FirstP) experiment could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Passage_ANCE_FirstP_Embedding.zip).
-The TREC eval set query embedding and their ids for our document ANCE(FirstP) experiment could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_FirstP_Embedding.zip).
+The TREC eval set query embedding and their ids for our document ANCE(FirstP) experiment could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_FirstP_Embedding.zip). 
 The TREC eval set query embedding and their ids for our document 2048 ANCE(MaxP) experiment could be downloaded [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/Document_ANCE_MaxP_Embedding.zip).
 
 The t-SNE plots for all the queries in the TREC document eval set for ANCE(FirstP) could be viewed [here](https://webdatamltrainingdiag842.blob.core.windows.net/semistructstore/OpenSource/t-SNE.zip).

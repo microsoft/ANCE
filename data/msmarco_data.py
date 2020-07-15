@@ -6,7 +6,7 @@ import gzip
 import pickle
 from utils.util import pad_input_ids, multi_file_process, numbered_byte_file_generator, EmbeddingCache
 import csv
-from model.models import MODEL_CLASSES, ALL_MODELS
+from model.models import MSMarcoConfigDict, ALL_MODELS
 from torch.utils.data import DataLoader, Dataset, TensorDataset, IterableDataset, get_worker_info
 import numpy as np
 from os import listdir
@@ -191,14 +191,14 @@ def preprocess(args):
         write_query_rel(
             args,
             pid2offset,
-            "msmarco-doctrain-queries.tsv.gz",
-            "msmarco-doctrain-qrels.tsv.gz",
+            "msmarco-doctrain-queries.tsv",
+            "msmarco-doctrain-qrels.tsv",
             "train-query",
             "train-qrel.tsv")
         write_query_rel(
             args,
             pid2offset,
-            "msmarco-test2019-queries.tsv.gz",
+            "msmarco-test2019-queries.tsv",
             "2019qrels-docs.txt",
             "dev-query",
             "dev-qrel.tsv")
@@ -206,7 +206,7 @@ def preprocess(args):
         write_query_rel(
             args,
             pid2offset,
-            "queries.train.shuf.tsv",
+            "queries.train.tsv",
             "qrels.train.tsv",
             "train-query",
             "train-qrel.tsv")
@@ -382,7 +382,7 @@ def get_arguments():
         required=True,
         help="Model type selected in the list: " +
         ", ".join(
-            MODEL_CLASSES.keys()),
+            MSMarcoConfigDict.keys()),
     )
     parser.add_argument(
         "--model_name_or_path",

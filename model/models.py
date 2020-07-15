@@ -7,6 +7,9 @@ from transformers import (
     RobertaModel,
     RobertaForSequenceClassification,
     RobertaTokenizer,
+    BertModel,
+    BertTokenizer,
+    BertConfig
 )
 import torch.nn.functional as F
 from data.process_fn import triple_process_fn, triple2dual_process_fn
@@ -193,6 +196,57 @@ class RobertaDot_CLF_ANN_NLL_MultiChunk(NLL_MultiChunk, RobertaDot_NLL_LN):
             batchS, chunk_factor, embeddingS)
 
         return complex_emb_k  # size [batchS, chunk_factor, embeddingS]
+
+
+class HFBertEncoder(BertModel):
+    def __init__(self, config):
+        BertModel.__init__(self, config)
+        assert config.hidden_size > 0, 'Encoder hidden_size can\'t be zero'
+        self.init_weights()
+    @classmethod
+    def init_encoder(cls, args, dropout: float = 0.1):
+        cfg = BertConfig.from_pretrained("bert-base-uncased")
+        if dropout != 0:
+            cfg.attention_probs_dropout_prob = dropout
+            cfg.hidden_dropout_prob = dropout
+        return cls.from_pretrained("bert-base-uncased", config=cfg)
+    def forward(self, input_ids, attention_mask):
+        hidden_states = None
+        sequence_output, pooled_output = super().forward(input_ids=input_ids,
+                                                         attention_mask=attention_mask)
+        pooled_output = sequence_output[:, 0, :]
+        return sequence_output, pooled_output, hidden_states
+    def get_out_size(self):
+        if self.encode_proj:
+            return self.encode_proj.out_features
+        return self.config.hidden_size
+
+
+class BiEncoder(nn.Module):
+    """ Bi-Encoder model component. Encapsulates query/question and context/passage encoders.
+    """
+    def __init__(self, args):
+        super(BiEncoder, self).__init__()
+        self.question_model = HFBertEncoder.init_encoder(args)
+        self.ctx_model = HFBertEncoder.init_encoder(args)
+    def query_emb(self, input_ids, attention_mask):
+        sequence_output, pooled_output, hidden_states = self.question_model(input_ids, attention_mask)
+        return pooled_output
+    def body_emb(self, input_ids, attention_mask):
+        sequence_output, pooled_output, hidden_states = self.ctx_model(input_ids, attention_mask)
+        return pooled_output
+    def forward(self, query_ids, attention_mask_q, input_ids_a = None, attention_mask_a = None, input_ids_b = None, attention_mask_b = None):
+        if input_ids_b is None:
+            q_embs = self.query_emb(query_ids, attention_mask_q)
+            a_embs = self.body_emb(input_ids_a, attention_mask_a)
+            return (q_embs, a_embs)
+        q_embs = self.query_emb(query_ids, attention_mask_q)
+        a_embs = self.body_emb(input_ids_a, attention_mask_a)
+        b_embs = self.body_emb(input_ids_b, attention_mask_b)
+        logit_matrix = torch.cat([(q_embs*a_embs).sum(-1).unsqueeze(1), (q_embs*b_embs).sum(-1).unsqueeze(1)], dim=1) #[B, 2]
+        lsm = F.log_softmax(logit_matrix, dim=1)
+        loss = -1.0*lsm[:,0]
+        return (loss.mean(),)
         
 
 # --------------------------------------------------
@@ -205,17 +259,6 @@ ALL_MODELS = sum(
     ),
     (),
 )
-
-MODEL_CLASSES = {
-    "rdot_nll": (
-        RobertaConfig,
-        RobertaDot_NLL_LN,
-        RobertaTokenizer),
-    "rdot_nll_multi_chunk": (
-        RobertaConfig,
-        RobertaDot_CLF_ANN_NLL_MultiChunk,
-        RobertaTokenizer),
-}
 
 
 default_process_fn = triple_process_fn
@@ -233,9 +276,19 @@ class MSMarcoConfig:
 
 configs = [
     MSMarcoConfig(name="rdot_nll",
-                  model=RobertaDot_NLL_LN,
-                  use_mean=False,
-                  ),
+                model=RobertaDot_NLL_LN,
+                use_mean=False,
+                ),
+    MSMarcoConfig(name="rdot_nll_multi_chunk",
+                model=RobertaDot_CLF_ANN_NLL_MultiChunk,
+                use_mean=False,
+                ),
+    MSMarcoConfig(name="dpr",
+                model=BiEncoder,
+                tokenizer_class=BertTokenizer,
+                config_class=BertConfig,
+                use_mean=False,
+                ),
 ]
 
 MSMarcoConfigDict = {cfg.name: cfg for cfg in configs}

@@ -23,7 +23,7 @@ from transformers import (
 )
 import transformers
 from utils.lamb import Lamb
-from model.models import MODEL_CLASSES, ALL_MODELS
+from model.models import MSMarcoConfigDict, ALL_MODELS
 from torch import nn
 import torch.distributed as dist
 from tqdm import tqdm, trange
@@ -363,7 +363,7 @@ def get_arguments():
         required=True,
         help="Model type selected in the list: " +
         ", ".join(
-            MODEL_CLASSES.keys()),
+            MSMarcoConfigDict.keys()),
     )
 
     parser.add_argument(
@@ -662,19 +662,19 @@ def load_model(args):
         torch.distributed.barrier()
 
     args.model_type = args.model_type.lower()
-    config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-    config = config_class.from_pretrained(
+    configObj = MSMarcoConfigDict[args.model_type]
+    config = configObj.config_class.from_pretrained(
         args.config_name if args.config_name else args.model_name_or_path,
         num_labels=num_labels,
         finetuning_task=args.task_name,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
-    tokenizer = tokenizer_class.from_pretrained(
+    tokenizer = configObj.tokenizer_class.from_pretrained(
         args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
         do_lower_case=args.do_lower_case,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
-    model = model_class.from_pretrained(
+    model = configObj.model_class.from_pretrained(
         args.model_name_or_path,
         from_tf=bool(".ckpt" in args.model_name_or_path),
         config=config,
