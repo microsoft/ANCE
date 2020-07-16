@@ -22,7 +22,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 from multiprocessing import Process
 from torch.utils.data import DataLoader, Dataset, TensorDataset, IterableDataset
 import re
-from model.models import MODEL_CLASSES, ALL_MODELS
+from model.models import MSMarcoConfigDict, ALL_MODELS
 from typing import List, Set, Dict, Tuple, Callable, Iterable, Any
 
 
@@ -221,7 +221,8 @@ def concat_key(all_list, key, axis=0):
 
 
 def get_checkpoint_no(checkpoint_path):
-    return int(re.findall(r'\d+', checkpoint_path)[-1])
+    nums = re.findall(r'\d+', checkpoint_path)
+    return int(nums[-1]) if len(nums) > 0 else 0
 
 
 def get_latest_ann_data(ann_data_path):
@@ -306,21 +307,21 @@ class EmbeddingCache:
 
 
 class StreamingDataset(IterableDataset):
-    def __init__(self, elements, fn):
+    def __init__(self, elements, fn, distributed=True):
         super().__init__()
         self.elements = elements
         self.fn = fn
-        self.num_replicas = -1
-
+        self.num_replicas=-1 
+        self.distributed = distributed
+    
     def __iter__(self):
         if dist.is_initialized():
             self.num_replicas = dist.get_world_size()
             self.rank = dist.get_rank()
-            print("Rank:", self.rank, "world:", self.num_replicas)
         else:
             print("Not running in distributed mode")
         for i, element in enumerate(self.elements):
-            if self.num_replicas != -1 and i % self.num_replicas != self.rank:
+            if self.distributed and self.num_replicas != -1 and i % self.num_replicas != self.rank:
                 continue
             records = self.fn(element, i)
             for rec in records:
@@ -329,8 +330,8 @@ class StreamingDataset(IterableDataset):
 
 def tokenize_to_file(args, i, num_process, in_path, out_path, line_fn):
 
-    config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-    tokenizer = tokenizer_class.from_pretrained(
+    configObj = MSMarcoConfigDict[args.model_type]
+    tokenizer = configObj.tokenizer_class.from_pretrained(
         args.model_name_or_path,
         do_lower_case=True,
         cache_dir=None,

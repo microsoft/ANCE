@@ -24,7 +24,7 @@ from transformers import (
     RobertaModel,
 )
 from data.msmarco_data import GetProcessingFn  
-from model.models import MODEL_CLASSES, ALL_MODELS
+from model.models import MSMarcoConfigDict, ALL_MODELS
 from torch import nn
 import torch.distributed as dist
 from tqdm import tqdm, trange
@@ -104,20 +104,20 @@ def load_model(args, checkpoint_path):
     label_list = ["0", "1"]
     num_labels = len(label_list)
     args.model_type = args.model_type.lower()
-    config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+    configObj = MSMarcoConfigDict[args.model_type]
     args.model_name_or_path = checkpoint_path
-    config = config_class.from_pretrained(
+    config = configObj.config_class.from_pretrained(
         args.model_name_or_path,
         num_labels=num_labels,
         finetuning_task="MSMarco",
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
-    tokenizer = tokenizer_class.from_pretrained(
+    tokenizer = configObj.tokenizer_class.from_pretrained(
         args.model_name_or_path,
         do_lower_case=True,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
-    model = model_class.from_pretrained(
+    model = configObj.model_class.from_pretrained(
         args.model_name_or_path,
         from_tf=bool(".ckpt" in args.model_name_or_path),
         config=config,
@@ -482,7 +482,7 @@ def get_arguments():
         required=True,
         help="Model type selected in the list: " +
         ", ".join(
-            MODEL_CLASSES.keys()),
+            MSMarcoConfigDict.keys()),
     )
 
     parser.add_argument(

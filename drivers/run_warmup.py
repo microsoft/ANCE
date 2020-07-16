@@ -41,7 +41,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def train(args, model, tokenizer, train_dataloader):
+def train(args, model, tokenizer, f, train_fn):
     """ Train the model """
     tb_writer = None
     if is_first_worker():
@@ -169,7 +169,10 @@ def train(args, model, tokenizer, train_dataloader):
     )
     set_seed(args)  # Added here for reproductibility
     for m_epoch in train_iterator:
-        for step, batch in tqdm(enumerate(train_dataloader), desc="Iteration", disable=args.local_rank not in [-1, 0]):
+        f.seek(0)
+        sds = StreamingDataset(f,train_fn)
+        epoch_iterator = DataLoader(sds, batch_size=args.per_gpu_train_batch_size, num_workers=1)
+        for step, batch in tqdm(enumerate(epoch_iterator),desc="Iteration",disable=args.local_rank not in [-1,0]):
 
             # Skip past any already trained steps if resuming training
             if steps_trained_in_current_epoch > 0:
@@ -738,10 +741,8 @@ def main():
         with open(args.data_dir+"/triples.train.small.tsv", encoding="utf-8-sig") as f:
             train_batch_size = args.per_gpu_train_batch_size * \
                 max(1, args.n_gpu)
-            sds = StreamingDataset(f, train_fn)
-            train_dataloader = DataLoader(sds, batch_size=train_batch_size, num_workers=1)
             global_step, tr_loss = train(
-                args, model, tokenizer, train_dataloader)
+                args, model, tokenizer, f, train_fn)
             logger.info(" global_step = %s, average loss = %s",
                         global_step, tr_loss)
 
