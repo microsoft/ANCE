@@ -151,15 +151,9 @@ reproduce our results on OpenQA Benchmarks in this section.
 ### Download data
 commands/data_download.sh takes care of this step.
 
-### Preprocess data
-The commands to preprocess data downloaded from the previous step are provided in:
-```
-commands/run_tokenization_dpr.sh
-```
-
 ### ANN data generation & ANCE training
 Following the same training philosophy discussed before, the ann data generation and ANCE training for OpenQA require two parallel jobs.
-1. We need to generate an initial training set for ANCE to start training. The command for that is provided in:
+1. We need to preprocess data and generate an initial training set for ANCE to start training. The command for that is provided in:
 ```
 commands/run_ann_data_gen_dpr.sh
 ```
@@ -169,7 +163,7 @@ We keep this data generation job running after it creates an initial training se
 ```
 commands/run_train_dpr.sh
 ```
-During training, the evaluation metrics will be printed to tensorboards each time it receives new training data.
+During training, the evaluation metrics will be printed to tensorboards each time it receives new training data. Alternatively, you could check the metrics in the dumped file "ann_ndcg_#" in the directory specified by "model_ann_data_dir" in commands/run_ann_data_gen_dpr.sh each time new training data is generated.
 
 ## Results
 The run_train.sh and run_ann_data_gen.sh files contain the command with the parameters we used for passage ANCE(FirstP), document ANCE(FirstP) and document ANCE(MaxP)

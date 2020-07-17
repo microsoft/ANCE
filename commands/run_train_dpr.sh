@@ -1,4 +1,4 @@
-gpu_no=1
+gpu_no=8
 
 # model type
 model_type="dpr"
