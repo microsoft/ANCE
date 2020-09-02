@@ -36,7 +36,7 @@ python setup.py install
 ## Data Download
 To download all the needed data, run:
 ```
-bash commands/datadownload.sh 
+bash commands/data_download.sh 
 ```
 
 ## Data Preprocessing
