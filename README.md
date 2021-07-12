@@ -216,4 +216,4 @@ run_train_warmup.sh contains the commands to reproduce the results for the pretr
 
 Note the steps to reproduce similar results as shown in the table might be a little different due to different synchronizing between training and ann data generation processes and other possible environment differences of the user experiments.
 
-∗Lee and Chenyan contributed equally
+
