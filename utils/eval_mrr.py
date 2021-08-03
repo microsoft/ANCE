@@ -113,7 +113,7 @@ def passage_dist_eval(args, model, tokenizer):
     def fn(line, i):
         return dual_process_fn(line, i, tokenizer, args)
 
-    top1000_path = os.path.join(base_path, "top1000.dev.tsv")
+    top1000_path = os.path.join(base_path, "top1000.dev")
     top1k_qid_pid = parse_top_dev(top1000_path, qid_col=0, pid_col=1)
 
     mrr_ref_path = os.path.join(base_path, "qrels.dev.small.tsv")
