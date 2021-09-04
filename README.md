@@ -23,6 +23,10 @@ demonstrate that the efficiency bottleneck is in the encoding update, not in the
 ANCE training. These qualifications demonstrate the advantages, perhaps also the necessity, of our
 asynchronous ANCE learning in dense retrieval.
 
+## What's new
+* [September 2021 Released SEED-Encoder fine-tuning code.](https://github.com/microsoft/ANCE/tree/master/model/SEED_Encoder/SEED-Encoder.md)
+
+
 ## Requirements
 
 To install requirements, run the following commands:

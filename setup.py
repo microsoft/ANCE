@@ -20,6 +20,6 @@ setup(
         'transformers==2.3.0', 
         'pytrec-eval',
         'faiss-cpu',
-        'wget'
+        'wget',
     ],
 )

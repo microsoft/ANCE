@@ -13,6 +13,7 @@ from transformers import (
 )
 import torch.nn.functional as F
 from data.process_fn import triple_process_fn, triple2dual_process_fn
+from model.SEED_Encoder import SEEDEncoderConfig, SEEDTokenizer, SEEDEncoderForSequenceClassification,SEEDEncoderForMaskedLM
 
 
 class EmbeddingMixin:
@@ -197,6 +198,27 @@ class RobertaDot_CLF_ANN_NLL_MultiChunk(NLL_MultiChunk, RobertaDot_NLL_LN):
 
         return complex_emb_k  # size [batchS, chunk_factor, embeddingS]
 
+class SEEDEncoderDot_NLL_LN(NLL, SEEDEncoderForSequenceClassification):
+    """None
+    Compress embedding to 200d, then computes NLL loss.
+    """
+    def __init__(self, config, model_argobj=None):
+        NLL.__init__(self, model_argobj)
+        SEEDEncoderForSequenceClassification.__init__(self, config)
+        self.embeddingHead = nn.Linear(config.encoder_embed_dim, 768)
+        self.norm = nn.LayerNorm(768)
+        self.apply(self._init_weights)
+
+    def query_emb(self, input_ids, attention_mask=None):
+        outputs1 = self.seed_encoder.encoder(input_ids)
+
+        full_emb = self.masked_mean_or_first(outputs1, attention_mask)
+        query1 = self.norm(self.embeddingHead(full_emb))
+
+        return query1
+
+    def body_emb(self, input_ids, attention_mask=None):
+        return self.query_emb(input_ids, attention_mask)
 
 class HFBertEncoder(BertModel):
     def __init__(self, config):
@@ -255,7 +277,7 @@ ALL_MODELS = sum(
         tuple(conf.pretrained_config_archive_map.keys())
         for conf in (
             RobertaConfig,
-        )
+        ) if hasattr(conf,'pretrained_config_archive_map')
     ),
     (),
 )
@@ -288,6 +310,12 @@ configs = [
                 tokenizer_class=BertTokenizer,
                 config_class=BertConfig,
                 use_mean=False,
+                ),
+    MSMarcoConfig(name="seeddot_nll",
+                model=SEEDEncoderDot_NLL_LN,
+                use_mean=False,
+                tokenizer_class=SEEDTokenizer,
+                config_class=SEEDEncoderConfig,
                 ),
 ]
 
