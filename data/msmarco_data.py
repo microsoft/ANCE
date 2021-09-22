@@ -228,7 +228,8 @@ def PassagePreprocessingFn(args, line, tokenizer):
         title = line_arr[2].rstrip()
         p_text = line_arr[3].rstrip()
 
-        full_text = url + "<sep>" + title + "<sep>" + p_text
+        #full_text = url + "<sep>" + title + "<sep>" + p_text
+        full_text = url + " "+tokenizer.sep_token+" " + title + " "+tokenizer.sep_token+" " + p_text
         # keep only first 10000 characters, should be sufficient for any
         # experiment that uses less than 500 - 1k tokens
         full_text = full_text[:args.max_doc_character]
@@ -249,7 +250,10 @@ def PassagePreprocessingFn(args, line, tokenizer):
         max_length=args.max_seq_length,
     )
     passage_len = min(len(passage), args.max_seq_length)
-    input_id_b = pad_input_ids(passage, args.max_seq_length)
+    input_id_b = pad_input_ids(passage, args.max_seq_length,pad_token=tokenizer.pad_token_id)
+
+    
+    
 
     return p_id.to_bytes(8,'big') + passage_len.to_bytes(4,'big') + np.array(input_id_b,np.int32).tobytes()
 
@@ -263,7 +267,7 @@ def QueryPreprocessingFn(args, line, tokenizer):
         add_special_tokens=True,
         max_length=args.max_query_length)
     passage_len = min(len(passage), args.max_query_length)
-    input_id_b = pad_input_ids(passage, args.max_query_length)
+    input_id_b = pad_input_ids(passage, args.max_query_length,pad_token=tokenizer.pad_token_id)
 
     return q_id.to_bytes(8,'big') + passage_len.to_bytes(4,'big') + np.array(input_id_b,np.int32).tobytes()
 

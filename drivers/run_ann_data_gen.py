@@ -107,13 +107,13 @@ def load_model(args, checkpoint_path):
     configObj = MSMarcoConfigDict[args.model_type]
     args.model_name_or_path = checkpoint_path
     config = configObj.config_class.from_pretrained(
-        args.model_name_or_path,
+        args.config_name if args.config_name else args.model_name_or_path,
         num_labels=num_labels,
         finetuning_task="MSMarco",
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
     tokenizer = configObj.tokenizer_class.from_pretrained(
-        args.model_name_or_path,
+        args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
         do_lower_case=True,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
@@ -606,6 +606,20 @@ def get_arguments():
         default=False,
         action="store_true",
         help="only do inference if specify",
+    )
+
+    parser.add_argument(
+        "--config_name",
+        default="",
+        type=str,
+        help="Pretrained config name or path if not the same as model_name",
+    )
+
+    parser.add_argument(
+        "--tokenizer_name",
+        default="",
+        type=str,
+        help="Pretrained tokenizer name or path if not the same as model_name",
     )
 
     args = parser.parse_args()

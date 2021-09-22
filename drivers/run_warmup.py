@@ -315,6 +315,8 @@ def load_stuff(model_type, args):
         cache_dir=args.cache_dir if args.cache_dir else None,
         model_argobj=model_args,
     )
+    #model = configObj.model_class(config,model_argobj=model_args)
+    
 
     if args.local_rank == 0:
         # Make sure only the first process in distributed training will download model & vocab

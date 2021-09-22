@@ -149,8 +149,11 @@ def train(args, model, tokenizer, query_cache, passage_cache):
         # set global_step to gobal_step of last saved checkpoint from model
         # path
         if "-" in args.model_name_or_path:
-            global_step = int(
-                args.model_name_or_path.split("-")[-1].split("/")[0])
+            try:
+                global_step = int(
+                    args.model_name_or_path.split("-")[-1].split("/")[0])
+            except:
+                global_step=0
         else:
             global_step = 0
         logger.info(
