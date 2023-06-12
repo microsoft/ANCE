@@ -17,7 +17,7 @@ setup(
    license="MIT",
    long_description=readme,
    install_requires=[
-        'transformers==2.3.0', 
+        'transformers==4.30.0', 
         'pytrec-eval',
         'faiss-cpu',
         'wget',
