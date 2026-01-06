@@ -99,6 +99,9 @@ def all_gather_list(data, group=None, max_size=16384):
     Args:
         data (Any): data from the local worker to be gathered on other workers
         group (optional): group of the collective
+    
+    Security Note: pickle is used here for internal distributed training communication
+    between trusted worker processes, not for loading external/user-provided data.
     """
     SIZE_STORAGE_BYTES = 4  # int32 to encode the payload size
 

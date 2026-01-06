@@ -104,13 +104,13 @@ def barrier_array_merge(
                 os.makedirs(args.output_dir)
 
         dist.barrier()  # directory created
-        pickle_path = os.path.join(
+        # Use numpy save instead of pickle for security (avoid arbitrary code execution)
+        npy_path = os.path.join(
             args.output_dir,
-            "{1}_data_obj_{0}.pb".format(
+            "{1}_data_obj_{0}.npy".format(
                 str(rank),
                 prefix))
-        with open(pickle_path, 'wb') as handle:
-            pickle.dump(data_array, handle, protocol=4)
+        np.save(npy_path, data_array, allow_pickle=False)
 
         # make sure all processes wrote their data before first process
         # collects it
@@ -128,15 +128,16 @@ def barrier_array_merge(
 
     for i in range(
             args.world_size):  # TODO: dynamically find the max instead of HardCode
-        pickle_path = os.path.join(
+        npy_path = os.path.join(
             args.output_dir,
-            "{1}_data_obj_{0}.pb".format(
+            "{1}_data_obj_{0}.npy".format(
                 str(i),
                 prefix))
         try:
-            with open(pickle_path, 'rb') as handle:
-                b = pickle.load(handle)
-                data_list.append(b)
+            # Use numpy load with allow_pickle=False for security
+            # This prevents arbitrary code execution from malicious files
+            b = np.load(npy_path, allow_pickle=False)
+            data_list.append(b)
         except BaseException:
             continue
 
@@ -371,6 +372,9 @@ def all_gather(data):
         data: any picklable object
     Returns:
         list[data]: list of data gathered from each rank
+    
+    Security Note: pickle is used here for internal distributed training communication
+    between trusted worker processes, not for loading external/user-provided data.
     """
     if not dist.is_initialized() or dist.get_world_size() == 1:
         return [data]
